@@ -46,7 +46,7 @@ The dataset used is the publicly available **Brain Stroke Dataset** from Kaggle:
 
 ## 📈 Model Performance
 
-> Include performance metrics or confusion matrix screenshots here
+
 
 - **Accuracy**: 93%
 - **Precision**:94%
