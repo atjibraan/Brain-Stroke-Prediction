@@ -2,118 +2,135 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-import seaborn as sns
+import plotly.express as px
 
 st.set_page_config(
-    page_title="Stroke Risk Predictor",
-    layout="wide",
+    page_title="🧠 Stroke Risk Predictor",
+    layout="centered",
     page_icon="🧠"
 )
 
-# ========== Load model ==========
+# Load model
 @st.cache_resource
-
 def load_model():
     return joblib.load("stroke_prediction_model.pkl")
 
 model = load_model()
 
-# ========== Title and Info ==========
+# === Title and Description ===
 st.title("🧠 Stroke Risk Prediction App")
 st.markdown("""
-This application predicts the likelihood of a stroke using patient information and visualizes the associated health indicators.
-
-**Instructions:** Fill in the patient details on the left panel or upload a CSV file. Predictions and visualizations will appear on the right.
+Welcome to the Stroke Risk Prediction App.  
+Enter basic patient information and health metrics below to estimate stroke risk.  
+The app uses a trained RandomForest model and offers interpretable visualizations for decision support.
 """)
-st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("<p style='font-size: 14px; color: gray;'>Developed by <b>Your Name</b></p>", unsafe_allow_html=True)
+st.markdown("---")
 
-# ========== Sidebar Input ==========
-st.sidebar.header("🧾 Input Patient Data")
+# === Input Form ===
+with st.form("input_form"):
+    st.markdown("## 👤 Patient Details")
 
-input_mode = st.sidebar.radio("Select Input Mode", ("Manual Input", "CSV Upload"))
+    col1, col2 = st.columns(2)
+    with col1:
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+        age = st.slider("Age", 1, 100, 30)
+        hypertension = st.selectbox("Hypertension", ["No", "Yes"])
+        heart_disease = st.selectbox("Heart Disease", ["No", "Yes"])
+        ever_married = st.selectbox("Ever Married", ["No", "Yes"])
 
-if input_mode == "Manual Input":
-    gender = st.sidebar.selectbox("Gender", ["Male", "Female", "Other"])
-    age = st.sidebar.slider("Age", 1, 100, 30)
-    hypertension = st.sidebar.selectbox("Hypertension", ["No", "Yes"])
-    heart_disease = st.sidebar.selectbox("Heart Disease", ["No", "Yes"])
-    ever_married = st.sidebar.selectbox("Ever Married", ["No", "Yes"])
-    work_type = st.sidebar.selectbox("Work Type", ["Private", "Self-employed", "Govt_job", "children", "Never_worked"])
-    residence_type = st.sidebar.selectbox("Residence Type", ["Urban", "Rural"])
-    avg_glucose_level = st.sidebar.slider("Average Glucose Level", 50.0, 250.0, 100.0)
-    bmi = st.sidebar.slider("BMI", 10.0, 60.0, 22.0)
+    with col2:
+        work_type = st.selectbox("Work Type", ["Private", "Self-employed", "Govt_job", "children", "Never_worked"])
+        residence_type = st.selectbox("Residence Type", ["Urban", "Rural"])
+        avg_glucose_level = st.slider("Average Glucose Level", 50.0, 250.0, 100.0)
+        bmi = st.slider("BMI", 10.0, 60.0, 22.0)
+        smoking_status = st.selectbox("Smoking Status", ["formerly smoked", "never smoked", "smokes", "Unknown"])
 
-    input_df = pd.DataFrame({
-        'gender': [gender],
-        'age': [age],
-        'hypertension': [1 if hypertension == 'Yes' else 0],
-        'heart_disease': [1 if heart_disease == 'Yes' else 0],
-        'ever_married': [1 if ever_married == 'Yes' else 0],
-        'work_type': [work_type],
-        'Residence_type': [residence_type],
-        'avg_glucose_level': [avg_glucose_level],
-        'bmi': [bmi],
-        'smoking_status': ['never smoked']
-    })
+    submit = st.form_submit_button("🔍 Predict Stroke Risk")
 
-    center_col = st.columns([1, 2, 1])[1]
+# === Prediction & Visual Explanation ===
+if submit:
+    try:
+        input_df = pd.DataFrame({
+            'gender': [gender],
+            'age': [age],
+            'hypertension': [1 if hypertension == "Yes" else 0],
+            'heart_disease': [1 if heart_disease == "Yes" else 0],
+            'ever_married': [1 if ever_married == "Yes" else 0],
+            'work_type': [work_type],
+            'Residence_type': [residence_type],
+            'avg_glucose_level': [avg_glucose_level],
+            'bmi': [bmi],
+            'smoking_status': [np.nan if smoking_status == "Unknown" else smoking_status]
+        })
 
-    with center_col:
-        st.markdown("## 🔍 Prediction Result")
+        # Predict
         prediction = model.predict(input_df)[0]
-        pred_proba = model.predict_proba(input_df)[0][1]
+        prob = model.predict_proba(input_df)[0][1] * 100
+        result = "🔴 High Risk of Stroke" if prediction == 1 else "🟢 Low Risk of Stroke"
 
-        st.success(f"**Prediction:** {'Stroke Risk' if prediction == 1 else 'No Stroke Risk'}")
-        st.info(f"**Probability:** {pred_proba:.2f}")
+        st.markdown("## 🧾 Prediction Result")
+        st.success(f"**Prediction:** {result}")
+        st.metric(label="Predicted Stroke Probability", value=f"{prob:.2f} %")
 
-        # === Visualizations ===
-        st.markdown("## 📊 Visual Analysis")
+        st.markdown("---")
+        st.markdown("## 📊 Visual Risk Explanation")
 
-        fig1, ax1 = plt.subplots()
-        sns.barplot(x=['No Stroke', 'Stroke'], y=model.predict_proba(input_df)[0], ax=ax1)
-        ax1.set_title("Stroke Probability Distribution")
-        st.pyplot(fig1)
+        # Bar chart of patient values
+        bar_df = pd.DataFrame({
+            'Metric': ['Age', 'BMI', 'Glucose'],
+            'Value': [age, bmi, avg_glucose_level]
+        })
+        fig_bar = px.bar(bar_df, x='Metric', y='Value', title="Health Indicators")
+        st.plotly_chart(fig_bar, use_container_width=True)
 
-        fig2 = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=pred_proba * 100,
-            title={'text': "Stroke Risk %"},
-            gauge={
-                'axis': {'range': [0, 100]},
-                'bar': {'color': "darkred"},
-                'steps': [
-                    {'range': [0, 30], 'color': "lightgreen"},
-                    {'range': [30, 70], 'color': "yellow"},
-                    {'range': [70, 100], 'color': "red"}
-                ]
-            }
+        st.markdown("### 🧠 Interpreting These Indicators")
+        st.markdown("""
+        - **Age > 60** increases stroke risk significantly.
+        - **BMI > 30** is associated with obesity-related complications.
+        - **Glucose > 140** can indicate diabetes or pre-diabetic conditions.
+        """)
+
+        # Radar chart of binary risk factors
+        radar_categories = ['Hypertension', 'Heart Disease', 'Age > 60', 'BMI > 30', 'Glucose > 140']
+        radar_values = [
+            1 if hypertension == "Yes" else 0,
+            1 if heart_disease == "Yes" else 0,
+            1 if age > 60 else 0,
+            1 if bmi > 30 else 0,
+            1 if avg_glucose_level > 140 else 0
+        ]
+        fig_radar = go.Figure(data=go.Scatterpolar(
+            r=radar_values + [radar_values[0]],
+            theta=radar_categories + [radar_categories[0]],
+            fill='toself',
+            line_color='indigo'
         ))
-        st.plotly_chart(fig2, use_container_width=True)
+        fig_radar.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+            showlegend=False,
+            title="Patient Risk Profile (Radar Chart)"
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
 
-else:
-    uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"], help="Max 100MB, 2 million rows")
+        # Pie chart of smoking status impact
+        st.markdown("### 🚬 Smoking Status Breakdown")
+        pie_fig = px.pie(
+            names=["Smokes", "Never Smoked", "Formerly Smoked", "Unknown"],
+            values=[1 if smoking_status == status else 0.25 for status in
+                    ["smokes", "never smoked", "formerly smoked", "Unknown"]],
+            title="Smoking Category Impact",
+            hole=0.4
+        )
+        st.plotly_chart(pie_fig, use_container_width=True)
 
-    if uploaded_file is not None:
-        try:
-            if uploaded_file.size > 100 * 1024 * 1024:
-                st.error("File size exceeds 100MB limit.")
-            else:
-                df = pd.read_csv(uploaded_file, nrows=2000000)
-                st.markdown("## 📄 Uploaded Data Preview")
-                st.dataframe(df.head())
+        st.markdown("### 📌 Summary")
+        st.markdown(f"""
+        This patient is predicted to have a **{"high" if prediction == 1 else "low"} risk** of stroke with a 
+        probability of **{prob:.2f}%**.  
+        Use this prediction alongside clinical judgment and further diagnostics.
+        """)
 
-                preds = model.predict(df)
-                df['Prediction'] = np.where(preds == 1, 'Stroke Risk', 'No Stroke Risk')
-
-                st.markdown("## 📋 Prediction Summary")
-                st.write(df[['Prediction']].value_counts().rename("Count"))
-
-                st.markdown("## 📈 Prediction Distribution")
-                fig, ax = plt.subplots()
-                sns.countplot(data=df, x='Prediction', palette='coolwarm', ax=ax)
-                st.pyplot(fig)
-
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
+    except Exception as e:
+        st.error(f"Prediction failed: {e}")
