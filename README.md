@@ -4,7 +4,8 @@
 
 This project presents a machine learning pipeline to **predict the likelihood of a stroke** in individuals based on health-related attributes. Early detection is crucial for timely medical intervention, and this model can aid in proactive health monitoring and decision-making.
 
----
+Access the app through [https://brain-stroke-prediction-ysmonwsbwuhuxjdfro2zqc.streamlit.app/
+---](url)
 
 ## 📊 Overview
 
