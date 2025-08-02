@@ -25,7 +25,7 @@ Welcome to the Stroke Risk Prediction App.
 Enter basic patient information and health metrics below to estimate stroke risk.  
 The app uses a trained RandomForest model and offers interpretable visualizations for decision support.
 """)
-st.markdown("<p style='font-size: 14px; color: gray;'>Developed by <b>Your Name</b></p>", unsafe_allow_html=True)
+st.markdown("<p style='font-size: 14px; color: gray;'>Developed by <b>Jibraan Attar</b></p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # === Input Form ===
